@@ -1,13 +1,14 @@
 package modbus
 
-import "sort"
-
-// TODO: add tests
+import (
+	"fmt"
+	"sort"
+)
 
 const (
 	// limits to how many registers you can read / write with Modbus at once
-	maxModbusFunc16Quantity = 123
-	maxModbusFunc3Quantity  = 2047
+	maxFunc16Quantity = 123
+	maxFunc3Quantity  = 2047
 )
 
 func optimizeRead(r []readOp) []readOp {
@@ -23,7 +24,7 @@ func optimizeRead(r []readOp) []readOp {
 		for j := i + 1; j < len(preopt); j++ {
 			// FIXME: both optimizations functions should check whether or not
 			// the condition is satisfied before, and not after merging
-			if op.quantity >= maxModbusFunc3Quantity {
+			if op.quantity >= maxFunc3Quantity {
 				break
 			}
 			if preopt[j].register == op.register+op.quantity {
@@ -48,7 +49,7 @@ func optimizeWrite(w []writeOp) []writeOp {
 	for i := 0; i < len(preopt); i++ {
 		op := preopt[i]
 		for j := i + 1; j < len(preopt); j++ {
-			if op.quantity >= maxModbusFunc16Quantity {
+			if op.quantity >= maxFunc16Quantity {
 				break
 			}
 			if preopt[j].register == op.register+op.quantity {
@@ -61,4 +62,57 @@ func optimizeWrite(w []writeOp) []writeOp {
 	}
 
 	return opt
+}
+
+func convertReadOp(r Read) (readOp, error) {
+	ro := readOp{
+		register: r.Register(),
+		quantity: r.Type().Size(),
+	}
+	return ro, ro.validate()
+}
+
+func convertWriteOp(w Write) (writeOp, error) {
+	wo := writeOp{
+		register: w.Register(),
+		quantity: uint16(len(w.Value().Bytes()) / 2),
+		value:    w.Value().Bytes(),
+	}
+	return wo, wo.validate()
+}
+
+type readOp struct {
+	register uint16
+	quantity uint16
+}
+
+func (r readOp) validate() error {
+	if r.quantity > maxFunc3Quantity {
+		return fmt.Errorf("%w: %d: %v", ErrTooManyRegisters, maxFunc3Quantity, r)
+	}
+	return nil
+}
+
+type writeOp struct {
+	register uint16
+	quantity uint16
+	value    []byte
+}
+
+func (w writeOp) validate() error {
+	if w.quantity > maxFunc16Quantity {
+		// no more than 123 registers are allowed per write operation
+		return fmt.Errorf("%w: %d: %v", ErrTooManyRegisters, maxFunc16Quantity, w)
+	}
+	return nil
+}
+
+func newReadOp(r, q uint16) (readOp, error) {
+	ro := readOp{r, q}
+	return ro, ro.validate()
+}
+
+func newWriteOp(r uint16, v []byte) (writeOp, error) {
+	wo := writeOp{r, uint16(len(v) / 2), v}
+	return wo, wo.validate()
 }
