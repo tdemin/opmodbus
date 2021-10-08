@@ -22,12 +22,8 @@ func optimizeRead(r []readOp) []readOp {
 	for i := 0; i < len(preopt); i++ {
 		op := preopt[i]
 		for j := i + 1; j < len(preopt); j++ {
-			// FIXME: both optimizations functions should check whether or not
-			// the condition is satisfied before, and not after merging
-			if op.quantity >= maxFunc3Quantity {
-				break
-			}
-			if preopt[j].register == op.register+op.quantity {
+			if preopt[j].register == op.register+op.quantity &&
+				op.quantity+preopt[j].quantity <= maxFunc3Quantity {
 				op.quantity += preopt[j].quantity
 				i++
 			}
@@ -49,10 +45,8 @@ func optimizeWrite(w []writeOp) []writeOp {
 	for i := 0; i < len(preopt); i++ {
 		op := preopt[i]
 		for j := i + 1; j < len(preopt); j++ {
-			if op.quantity >= maxFunc16Quantity {
-				break
-			}
-			if preopt[j].register == op.register+op.quantity {
+			if preopt[j].register == op.register+op.quantity &&
+				op.quantity+preopt[j].quantity <= maxFunc16Quantity {
 				op.quantity += preopt[j].quantity
 				op.value = append(op.value, preopt[j].value...)
 				i++
