@@ -1,8 +1,9 @@
 package containers
 
 import (
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestSlice_Set(t *testing.T) {
@@ -16,14 +17,33 @@ func TestSlice_Set(t *testing.T) {
 		args args
 		want int
 	}{
-		// TODO: Add test cases.
+		{
+			"normally",
+			NewSlice(4),
+			args{2, []byte{3, 4}},
+			2,
+		},
+		{
+			"with overlap",
+			NewSlice(4),
+			args{2, []byte{3, 4, 5}},
+			2,
+		},
+		{
+			"to empty slice",
+			NewSlice(0),
+			args{3, []byte{4, 5}},
+			0,
+		},
+		{
+			"with negative offset",
+			NewSlice(3),
+			args{-1, []byte{4, 5}},
+			0,
+		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.s.Set(tt.args.offset, tt.args.data); got != tt.want {
-				t.Errorf("Slice.Set() = %v, want %v", got, tt.want)
-			}
-		})
+		assert.Equal(t, tt.want, tt.s.Set(tt.args.offset, tt.args.data), tt.name)
 	}
 }
 
@@ -38,13 +58,32 @@ func TestSlice_Get(t *testing.T) {
 		args args
 		want []byte
 	}{
-		// TODO: Add test cases.
+		{
+			"normally",
+			Slice([]byte{3, 4, 5, 6}),
+			args{1, 2},
+			[]byte{4, 5},
+		},
+		{
+			"with overlap",
+			Slice([]byte{3, 4, 5}),
+			args{1, 3},
+			[]byte{4, 5},
+		},
+		{
+			"with offset overlap",
+			Slice([]byte{3, 4, 5}),
+			args{3, 3},
+			nil,
+		},
+		{
+			"with negative size",
+			Slice([]byte{3, 4}),
+			args{1, -1},
+			nil,
+		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.s.Get(tt.args.offset, tt.args.size); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Slice.Get() = %v, want %v", got, tt.want)
-			}
-		})
+		assert.Equal(t, tt.want, tt.s.Get(tt.args.offset, tt.args.size), tt.name)
 	}
 }
